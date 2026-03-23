@@ -37,7 +37,7 @@ public class PaymentService {
             tripEvent.tripId(), tripEvent.fareCents());
 
         return paymentRepository.findByIdempotencyKey(idempotencyKey)
-            .switchIfEmpty(createPayment(tripEvent, idempotencyKey));
+            .switchIfEmpty(Mono.defer(() -> createPayment(tripEvent, idempotencyKey)));
     }
 
     private Mono<Payment> createPayment(TripEvent tripEvent, String idempotencyKey) {

@@ -43,7 +43,7 @@ public class AuthController {
         }
 
         return userRepository.findByPhone(request.phone())
-            .switchIfEmpty(createUser(request.phone(), request.name()))
+            .switchIfEmpty(Mono.defer(() -> createUser(request.phone(), request.name())))
             .map(user -> {
                 String token = jwtService.generateToken(user.getId(), user.getPhone());
                 return ApiResponse.ok(Map.of(
