@@ -1,0 +1,41 @@
+server:
+  port: 3005
+
+spring:
+  application:
+    name: payment-service
+  threads:
+    virtual:
+      enabled: true
+  r2dbc:
+    url: ${SPRING_R2DBC_URL:r2dbc:pool:postgresql://localhost:5432/ridex}
+    username: ${SPRING_R2DBC_USERNAME:ridex}
+    password: ${SPRING_R2DBC_PASSWORD:ridex}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      transaction-id-prefix: payment-tx-
+    consumer:
+      group-id: payment-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.ridex.*
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}
+
+logging:
+  level:
+    com.ridex: ${LOG_LEVEL:DEBUG}

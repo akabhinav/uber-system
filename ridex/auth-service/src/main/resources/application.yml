@@ -1,0 +1,38 @@
+server:
+  port: 3004
+
+spring:
+  application:
+    name: auth-service
+  threads:
+    virtual:
+      enabled: true
+  r2dbc:
+    url: ${SPRING_R2DBC_URL:r2dbc:pool:postgresql://localhost:5432/ridex}
+    username: ${SPRING_R2DBC_USERNAME:ridex}
+    password: ${SPRING_R2DBC_PASSWORD:ridex}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+
+ridex:
+  jwt:
+    secret: ${JWT_SECRET:local-dev-secret-change-in-prod}
+    expiry-minutes: ${JWT_EXPIRY_MINUTES:60}
+  otp:
+    ttl-seconds: 300
+    length: 6
+
+logging:
+  level:
+    com.ridex: ${LOG_LEVEL:DEBUG}

@@ -1,0 +1,33 @@
+server:
+  port: 3006
+
+spring:
+  application:
+    name: pricing-service
+  threads:
+    virtual:
+      enabled: true
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+
+ridex:
+  pricing:
+    base-fare-cents: 200
+    per-km-cents: 150
+    per-minute-cents: 25
+    surge-update-interval-seconds: 30
+
+logging:
+  level:
+    com.ridex: ${LOG_LEVEL:DEBUG}

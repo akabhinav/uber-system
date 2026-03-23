@@ -1,0 +1,30 @@
+# Java
+target/
+*.class
+*.jar
+*.war
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Node
+ridex-ui/node_modules/
+ridex-ui/build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+
+# GraphHopper
+/data/
+*.pbf
+graphhopper-cache/

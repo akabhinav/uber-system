@@ -1,0 +1,56 @@
+server:
+  port: 3003
+
+spring:
+  application:
+    name: matching-service
+  threads:
+    virtual:
+      enabled: true
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+    cassandra:
+      contact-points: ${SPRING_DATA_CASSANDRA_CONTACT_POINTS:localhost}
+      port: 9042
+      keyspace-name: ${SPRING_DATA_CASSANDRA_KEYSPACE_NAME:ridex}
+      local-datacenter: ${SPRING_DATA_CASSANDRA_LOCAL_DATACENTER:dc1}
+      schema-action: none
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      transaction-id-prefix: match-tx-
+    consumer:
+      group-id: matching-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.ridex.*
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+
+graphhopper:
+  osm-file: ${GRAPHHOPPER_OSM_FILE:/data/osm/city.pbf}
+  graph-cache: /data/graphhopper-cache
+
+ridex:
+  matching:
+    s2-cell-level: 13
+    search-radius-km: 5
+    max-candidates: 10
+    timeout-ms: 3000
+    lock-ttl-ms: 5000
+
+logging:
+  level:
+    com.ridex: ${LOG_LEVEL:DEBUG}
