@@ -12,14 +12,6 @@ import java.util.EnumSet;
 @EnableStateMachineFactory
 public class TripStateMachineConfig extends StateMachineConfigurerAdapter<TripState, TripEvent> {
 
-    public enum TripState {
-        REQUESTED, MATCHED, DRIVER_EN_ROUTE, PICKUP, IN_PROGRESS, COMPLETED, CANCELLED
-    }
-
-    public enum TripEvent {
-        MATCH_FOUND, DRIVER_ARRIVING, DRIVER_ARRIVED, START_TRIP, COMPLETE_TRIP, CANCEL_TRIP
-    }
-
     @Override
     public void configure(StateMachineStateConfigurer<TripState, TripEvent> states) throws Exception {
         states.withStates()

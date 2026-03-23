@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -67,12 +68,14 @@ public class AuthController {
         var decoded = jwtService.verifyToken(token);
         UUID userId = UUID.fromString(decoded.getSubject());
         return userRepository.findById(userId)
-            .map(user -> ApiResponse.ok(Map.of(
-                "userId", user.getId().toString(),
-                "name", user.getName() != null ? user.getName() : "",
-                "phone", user.getPhone(),
-                "active", user.isActive()
-            )))
+            .map(user -> {
+                Map<String, Object> data = new HashMap<>();
+                data.put("userId", user.getId().toString());
+                data.put("name", user.getName() != null ? user.getName() : "");
+                data.put("phone", user.getPhone());
+                data.put("active", user.isActive());
+                return ApiResponse.ok(data);
+            })
             .defaultIfEmpty(ApiResponse.error("USER_NOT_FOUND", "User not found"));
     }
 
