@@ -1,44 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { connectDriverWs, updateTripStatus } from '../api';
+import { connectDriverWs } from '../api';
 
 function DriverDashboard() {
-  const navigate = useNavigate();
-  const [online, setOnline] = useState(false);
-  const [currentTrip, setCurrentTrip] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [isOnline, setIsOnline] = useState(false);
+  const [location, setLocation] = useState({ lat: 12.9716, lng: 77.5946 });
+  const [status, setStatus] = useState('OFFLINE');
   const wsRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  const driverId = localStorage.getItem('ridex_userId');
 
   const goOnline = () => {
-    const driverId = localStorage.getItem('ridex_userId');
     try {
-      const ws = connectDriverWs(driverId);
-      ws.onopen = () => {
-        setOnline(true);
-        toast.success('You are now online');
-        ws.send(JSON.stringify({
-          type: 'DRIVER_ONLINE',
-          driverId,
-          location: { lat: 40.7128, lng: -74.0060 },
-        }));
+      wsRef.current = connectDriverWs(driverId);
+      wsRef.current.onopen = () => {
+        setIsOnline(true);
+        setStatus('AVAILABLE');
+        toast.success('You are now online!');
+        startLocationUpdates();
       };
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        setMessages((prev) => [...prev, data]);
-        if (data.type === 'TRIP_OFFER' || data.type === 'TRIP_ASSIGNED') {
-          setCurrentTrip(data);
-          toast('New trip offer!', { icon: '🚗' });
-        }
+      wsRef.current.onclose = () => {
+        setIsOnline(false);
+        setStatus('OFFLINE');
       };
-      ws.onclose = () => {
-        setOnline(false);
-        toast('Disconnected');
-      };
-      ws.onerror = () => {
+      wsRef.current.onerror = () => {
         toast.error('WebSocket connection failed');
       };
-      wsRef.current = ws;
     } catch (err) {
       toast.error('Failed to connect');
     }
@@ -47,124 +35,111 @@ function DriverDashboard() {
   const goOffline = () => {
     if (wsRef.current) {
       wsRef.current.close();
-      wsRef.current = null;
     }
-    setOnline(false);
-    setCurrentTrip(null);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    setIsOnline(false);
+    setStatus('OFFLINE');
+    toast('You are now offline');
   };
 
-  const handleAccept = async () => {
-    if (!currentTrip) return;
-    const tripId = currentTrip.tripId || currentTrip.id;
-    try {
-      await updateTripStatus(tripId, 'DRIVER_EN_ROUTE');
-      toast.success('Trip accepted');
-    } catch (err) {
-      toast.error('Failed to accept trip');
-    }
-  };
+  const startLocationUpdates = () => {
+    intervalRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // Simulate small movement
+        const newLat = location.lat + (Math.random() - 0.5) * 0.001;
+        const newLng = location.lng + (Math.random() - 0.5) * 0.001;
+        setLocation({ lat: newLat, lng: newLng });
 
-  const handleArrivedPickup = async () => {
-    if (!currentTrip) return;
-    const tripId = currentTrip.tripId || currentTrip.id;
-    try {
-      await updateTripStatus(tripId, 'PICKUP');
-      toast.success('Marked arrived at pickup');
-    } catch (err) {
-      toast.error('Failed to update status');
-    }
-  };
-
-  const handleStartTrip = async () => {
-    if (!currentTrip) return;
-    const tripId = currentTrip.tripId || currentTrip.id;
-    try {
-      await updateTripStatus(tripId, 'IN_PROGRESS');
-      toast.success('Trip started');
-    } catch (err) {
-      toast.error('Failed to start trip');
-    }
-  };
-
-  const handleCompleteTrip = async () => {
-    if (!currentTrip) return;
-    const tripId = currentTrip.tripId || currentTrip.id;
-    try {
-      await updateTripStatus(tripId, 'COMPLETED');
-      toast.success('Trip completed');
-      setCurrentTrip(null);
-    } catch (err) {
-      toast.error('Failed to complete trip');
-    }
+        wsRef.current.send(JSON.stringify({
+          driverId,
+          lat: newLat,
+          lng: newLng,
+          speed: 30 + Math.random() * 20,
+          heading: Math.random() * 360,
+          timestamp: new Date().toISOString(),
+        }));
+      }
+    }, 4000);
   };
 
   useEffect(() => {
     return () => {
       if (wsRef.current) wsRef.current.close();
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
   return (
-    <div>
-      <h1 style={{ marginBottom: '24px' }}>Driver Dashboard</h1>
+    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <h2 style={{ marginBottom: '24px' }}>Driver Dashboard</h2>
 
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div>
-            <span style={{
-              display: 'inline-block', width: '12px', height: '12px',
-              borderRadius: '50%', background: online ? '#28a745' : '#dc3545',
-              marginRight: '8px'
-            }} />
-            <strong>{online ? 'Online' : 'Offline'}</strong>
-          </div>
-          {online ? (
-            <button className="btn btn-danger" onClick={goOffline}>Go Offline</button>
-          ) : (
-            <button className="btn btn-success" onClick={goOnline}>Go Online</button>
-          )}
+      <div className="card" style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '120px', height: '120px', borderRadius: '50%',
+          margin: '0 auto 16px',
+          background: isOnline ? '#28a745' : '#6c757d',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontSize: '18px', fontWeight: 700
+        }}>
+          {status}
         </div>
 
-        {!online && (
-          <p style={{ color: '#666' }}>Go online to start receiving trip requests.</p>
-        )}
+        <h3 style={{ marginBottom: '8px' }}>Driver ID</h3>
+        <p style={{ fontSize: '12px', color: '#888', marginBottom: '24px', wordBreak: 'break-all' }}>
+          {driverId}
+        </p>
 
-        {online && !currentTrip && (
-          <p style={{ color: '#666' }}>Waiting for trip requests...</p>
-        )}
-
-        {currentTrip && (
-          <div style={{ marginTop: '16px', padding: '16px', background: '#f9f9f9', borderRadius: '8px' }}>
-            <h3>Current Trip</h3>
-            <p><strong>Trip ID:</strong> {currentTrip.tripId || currentTrip.id}</p>
-            {currentTrip.pickupLocation && (
-              <p><strong>Pickup:</strong> {currentTrip.pickupLocation.lat}, {currentTrip.pickupLocation.lng}</p>
-            )}
-            {currentTrip.dropoffLocation && (
-              <p><strong>Dropoff:</strong> {currentTrip.dropoffLocation.lat}, {currentTrip.dropoffLocation.lng}</p>
-            )}
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-              <button className="btn btn-primary" onClick={handleAccept}>Accept</button>
-              <button className="btn btn-secondary" onClick={handleArrivedPickup}>Arrived at Pickup</button>
-              <button className="btn btn-secondary" onClick={handleStartTrip}>Start Trip</button>
-              <button className="btn btn-success" onClick={handleCompleteTrip}>Complete Trip</button>
-            </div>
-          </div>
+        {!isOnline ? (
+          <button className="btn btn-success" style={{ width: '100%', padding: '16px', fontSize: '18px' }}
+                  onClick={goOnline}>
+            Go Online
+          </button>
+        ) : (
+          <button className="btn btn-danger" style={{ width: '100%', padding: '16px', fontSize: '18px' }}
+                  onClick={goOffline}>
+            Go Offline
+          </button>
         )}
       </div>
 
-      {messages.length > 0 && (
-        <div className="card" style={{ marginTop: '16px' }}>
-          <h3 style={{ marginBottom: '12px' }}>Messages</h3>
-          <div style={{ maxHeight: '300px', overflow: 'auto' }}>
-            {messages.map((msg, i) => (
-              <div key={i} style={{ padding: '8px', borderBottom: '1px solid #eee', fontSize: '14px' }}>
-                <strong>{msg.type}</strong>: {JSON.stringify(msg)}
-              </div>
-            ))}
+      {isOnline && (
+        <div className="card">
+          <h3 style={{ marginBottom: '12px' }}>Current Location</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <span style={{ color: '#888', fontSize: '14px' }}>Latitude</span>
+              <div style={{ fontWeight: 600 }}>{location.lat.toFixed(6)}</div>
+            </div>
+            <div>
+              <span style={{ color: '#888', fontSize: '14px' }}>Longitude</span>
+              <div style={{ fontWeight: 600 }}>{location.lng.toFixed(6)}</div>
+            </div>
           </div>
+          <p style={{ marginTop: '12px', fontSize: '14px', color: '#888' }}>
+            Sending location updates every 4 seconds...
+          </p>
         </div>
       )}
+
+      <div className="card">
+        <h3 style={{ marginBottom: '12px' }}>Today's Stats</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', textAlign: 'center' }}>
+          <div>
+            <div style={{ fontSize: '28px', fontWeight: 800 }}>0</div>
+            <div style={{ fontSize: '14px', color: '#888' }}>Trips</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '28px', fontWeight: 800 }}>$0.00</div>
+            <div style={{ fontSize: '14px', color: '#888' }}>Earnings</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '28px', fontWeight: 800 }}>0h</div>
+            <div style={{ fontSize: '14px', color: '#888' }}>Online</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
